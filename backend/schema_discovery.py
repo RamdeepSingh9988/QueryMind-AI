@@ -112,11 +112,19 @@ def get_foreign_keys():
             return foreign_keys
 
 
-if __name__ == "__main__":
-    foreign_keys = get_foreign_keys()
+def get_full_schema():
+    tables = get_database_schema()
+    relationships = get_foreign_keys()
 
-    for fk in foreign_keys:
-        print(
-            f"{fk['table']}.{fk['column']} "
-            f"-> {fk['references_table']}.{fk['references_column']}"
-        )
+    return {
+        "tables": tables,
+        "relationships": relationships
+    }        
+
+
+if __name__ == "__main__":
+    import json
+
+    schema = get_full_schema()
+
+    print(json.dumps(schema, indent=2))
