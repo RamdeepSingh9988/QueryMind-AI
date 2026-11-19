@@ -17,11 +17,17 @@ try:
         connect_timeout=10
     ) as conn:
         with conn.cursor() as cursor:
-            cursor.execute("SELECT version();")
-            result = cursor.fetchone()
+            cursor.execute("""
+        SELECT table_name
+        FROM information_schema.tables
+        WHERE table_schema = 'public'
+        AND table_type = 'BASE TABLE';
+             """)
+            result = cursor.fetchall()
 
             print("Database connected successfully!")
-            print(result[0])
+            for table in result:
+                print(table[0])
 
 except psycopg.Error as error:
     print("Database connection failed.")
