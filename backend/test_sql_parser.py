@@ -2,20 +2,24 @@
 import sqlglot
 from sqlglot import exp
 
-queries = [
-    "SELECT COUNT(*) FROM customers;",
-    "SELECT SUM(quantity) FROM order_items;",
-    "SELECT pg_sleep(10);",
-]
+sql = """
+WITH deleted_customers AS (
+    DELETE FROM customers
+    RETURNING id
+)
+SELECT * FROM deleted_customers;
+"""
 
-for sql in queries:
-    statement = sqlglot.parse_one(
-        sql,
-        read="postgres"
-    )
+statement = sqlglot.parse_one(
+    sql,
+    read="postgres"
+)
 
-    print("\nSQL:", repr(sql))
+print("Outer statement:", type(statement).__name__)
 
-    for function in statement.find_all(exp.Func):
-        print("Function:", function.sql_name())
-        print("Expression type:", type(function).__name__)
+for node in statement.walk():
+    print(type(node).__name__)
+
+
+
+    

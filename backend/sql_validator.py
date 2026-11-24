@@ -2,6 +2,7 @@
 import sqlglot
 from sqlglot import exp
 from sqlglot.errors import ParseError
+from sqlglot.optimizer.scope import traverse_scope
 
 ALLOWED_FUNCTIONS = {
     "COUNT",
@@ -9,6 +10,23 @@ ALLOWED_FUNCTIONS = {
     "AVG",
     "MIN",
     "MAX",
+}
+FORBIDDEN_OPERATIONS = (
+    exp.Insert,
+    exp.Update,
+    exp.Delete,
+    exp.Create,
+    exp.Drop,
+    exp.Alter,
+    exp.Merge,
+    exp.Command,
+)
+
+ALLOWED_TABLES = {
+    "customers",
+    "orders",
+    "products",
+    "order_items",
 }
 
 def validate_sql(sql):
@@ -46,6 +64,13 @@ def validate_sql(sql):
     if statement.find(exp.Into):
         return False, "SELECT INTO is not allowed"
 
+    for node in statement.walk():
+        if isinstance(node, FORBIDDEN_OPERATIONS):
+            return False, (
+                f"Forbidden SQL operation: "
+                f"{type(node).__name__}"
+            )
+
     
     for function in statement.find_all(exp.Func):
         if isinstance(function, exp.Anonymous):
@@ -55,6 +80,26 @@ def validate_sql(sql):
 
         if function_name not in ALLOWED_FUNCTIONS:
             return False, f"Function {function_name} is not allowed"
+
+
+    
+    # Validate real database tables across query scopes
+    scopes = traverse_scope(statement)
+
+    if scopes is None:
+        return False, "Unable to analyze SQL scopes"
+
+    for scope in scopes:
+        for _, source in scope.selected_sources.values():
+            if isinstance(source, exp.Table):
+                table_name = source.name.lower()
+
+                if table_name not in ALLOWED_TABLES:
+                    return False, (
+                        f"Table {table_name} is not allowed"
+                    )
+
+          
 
 
     return True, "AST validation passed"
