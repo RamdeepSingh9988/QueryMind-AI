@@ -1,22 +1,14 @@
 
-import os
+from backend.sql_executor import execute_sql
 
-import psycopg
-from dotenv import load_dotenv
 
-load_dotenv()
+if __name__ == "__main__":
 
-database_url = os.getenv("DATABASE_URL")
+    queries = {
+        "products": "SELECT id, name, price FROM products;",
+        "orders": "SELECT id, customer_id FROM orders;"
+    }
 
-if not database_url:
-    raise RuntimeError("DATABASE_URL is missing")
-
-with psycopg.connect(database_url) as conn:
-    with conn.cursor() as cursor:
-
-        cursor.execute("SELECT * FROM customers;")
-
-        customers = cursor.fetchall()
-
-        for customer in customers:
-            print(customer)
+    for name, query in queries.items():
+        print(f"\n{name}:")
+        print(execute_sql(query))

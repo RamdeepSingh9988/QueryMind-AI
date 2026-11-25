@@ -2,6 +2,35 @@
 from backend.sql_generator import generate_sql
 from backend.sql_executor import execute_sql
 from backend.sql_corrector import correct_sql
+from backend.result_interpreter import interpret_results
+
+
+def enrich_result(result: dict) -> dict:
+
+    if result["status"] != "success":
+        return result
+
+    try:
+        interpretation = interpret_results(
+            question=result["question"],
+            sql=result["sql"],
+            data=result["data"],
+            truncated=result.get("truncated", False)
+        )
+
+        return {
+            **result,
+            "interpretation": interpretation.model_dump(),
+            "interpretation_status": "success"
+        }
+
+    except Exception:
+        return {
+            **result,
+            "interpretation": None,
+            "interpretation_status": "error"
+        }
+
 
 
 def process_question(question: str) -> dict:
@@ -63,31 +92,36 @@ def process_question(question: str) -> dict:
         # Step 6: Validate and execute corrected SQL
         corrected_result = execute_sql(corrected.sql)
 
-        return {
-            "question": question,
-            "original_sql": ai_response.sql,
-            "sql": corrected.sql,
-            "retry_count": 1,
-            "self_corrected": (
-                corrected_result["status"] == "success"
-            ),
-            **corrected_result
-        }
+        return enrich_result({
+        "question": question,
+        "original_sql": ai_response.sql,
+        "sql": corrected.sql,
+        "retry_count": 1,
+        "self_corrected": (
+            corrected_result["status"] == "success"
+        ),
+        **corrected_result
+        })
 
     # Step 7: Return initial result
-    return {
+    return enrich_result ({
         "question": question,
         "sql": ai_response.sql,
         "retry_count": 0,
         "self_corrected": False,
         **result
-    }
+    })
+
 
 
 if __name__ == "__main__":
 
+    import json
+
     result = process_question(
-        "Show me all customer names"
+        "Show total revenue for each product, "
+        "calculated as quantity multiplied by unit_price, "
+        "sorted from highest to lowest total revenue."
     )
 
-    print(result)
+    print(json.dumps(result, indent=2, default=str))
