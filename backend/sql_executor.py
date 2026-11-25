@@ -55,18 +55,41 @@ def execute_sql(sql: str) -> dict:
                     "truncated": len(rows) > MAX_ROWS
                 }
 
-    except psycopg.Error:
+   
+    except psycopg.Error as error:
+
+        error_code = error.sqlstate
+
+        recoverable_errors = {
+            "42703": "Undefined column",
+            "42P01": "Undefined table",
+            "42601": "SQL syntax error",
+            "42803": "Grouping error",
+            "42883": "Undefined function",
+        }
+
         return {
             "status": "error",
             "message": "Database query failed",
+            "error_code": error_code,
+            "error_type": recoverable_errors.get(
+                error_code,
+                "Database error"
+            ),
+            "retryable": error_code in recoverable_errors,
             "data": []
         }
 
 
+
 if __name__ == "__main__":
 
-    result = execute_sql(
-        "SELECT id, name FROM customers;"
-    )
+    queries = [
+        "SELECT name FROM customers;",
+        "SELECT phone_number FROM customers;",
+        "DELETE FROM customers;",
+    ]
 
-    print(result)
+    for query in queries:
+        print("\nSQL:", query)
+        print(execute_sql(query))
