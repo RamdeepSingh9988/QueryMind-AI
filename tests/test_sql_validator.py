@@ -166,3 +166,30 @@ def test_cte_with_allowed_table():
 
     assert valid is True
 
+
+
+def test_allowed_schema():
+    valid, message = validate_sql(
+        "SELECT * FROM public.customers;"
+    )
+
+    assert valid is True
+
+
+def test_forbidden_schema():
+    valid, message = validate_sql(
+        "SELECT * FROM private.customers;"
+    )
+
+    assert valid is False
+    assert "Schema private" in message
+
+
+def test_system_schema_rejected():
+    valid, message = validate_sql(
+        "SELECT * FROM pg_catalog.pg_tables;"
+    )
+
+    assert valid is False
+
+

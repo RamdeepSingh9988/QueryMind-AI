@@ -28,6 +28,7 @@ ALLOWED_TABLES = {
     "products",
     "order_items",
 }
+ALLOWED_SCHEMAS = {"public"}
 
 def validate_sql(sql):
     if not sql or not sql.strip():
@@ -84,25 +85,39 @@ def validate_sql(sql):
 
     
     # Validate real database tables across query scopes
-    scopes = traverse_scope(statement)
 
-    if scopes is None:
-        return False, "Unable to analyze SQL scopes"
+    # Validate database tables and schemas
+    try:
+        scopes = traverse_scope(statement)
 
-    for scope in scopes:
-        for _, source in scope.selected_sources.values():
-            if isinstance(source, exp.Table):
-                table_name = source.name.lower()
+        if not scopes:
+            return False, "Unable to analyze SQL scopes"
 
-                if table_name not in ALLOWED_TABLES:
-                    return False, (
-                        f"Table {table_name} is not allowed"
-                    )
+        for scope in scopes:
+            for _, source in scope.selected_sources.values():
 
-          
+                if isinstance(source, exp.Table):
+                    table_name = source.name
+                    schema_name = source.db or "public"
 
+                    if source.catalog:
+                        return False, "Catalog access is not allowed"
+
+                    if schema_name not in ALLOWED_SCHEMAS:
+                        return False, (
+                            f"Schema {schema_name} is not allowed"
+                        )
+
+                    if table_name not in ALLOWED_TABLES:
+                        return False, (
+                            f"Table {table_name} is not allowed"
+                        )
+
+    except Exception:
+        return False, "SQL scope analysis failed"
 
     return True, "AST validation passed"
+    
 
 
 
